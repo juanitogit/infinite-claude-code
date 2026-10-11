@@ -193,12 +193,21 @@ function getProviders(env = process.env) {
     });
   }
 
-  // Optional User Configured Providers
+  // Optional User Configured Providers (Groq & Cerebras Extreme Speed Tiers)
   if (env.GROQ_API_KEY) {
     pool.push({
-      name: 'Groq - LLaMA 3.3 70B (800 tok/s)',
+      name: 'Groq - GPT-OSS 120B (Ultra-Speed LPU)',
       url: 'https://api.groq.com/openai/v1/chat/completions',
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
+      tags: ['speed', 'code', 'reasoning'],
+      headers: { 'Authorization': `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      cooldownUntil: 0
+    });
+
+    pool.push({
+      name: 'Groq - Qwen 27B Fast',
+      url: 'https://api.groq.com/openai/v1/chat/completions',
+      model: 'qwen/qwen3.8-27b',
       tags: ['speed', 'code'],
       headers: { 'Authorization': `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
       cooldownUntil: 0
@@ -207,10 +216,19 @@ function getProviders(env = process.env) {
 
   if (env.CEREBRAS_API_KEY) {
     pool.push({
-      name: 'Cerebras - LLaMA 3.3 70B (Ultra-Speed)',
+      name: 'Cerebras - GPT-OSS 120B (Wafer-Scale Engine)',
       url: 'https://api.cerebras.ai/v1/chat/completions',
-      model: 'llama3.3-70b',
-      tags: ['speed'],
+      model: 'gpt-oss-120b',
+      tags: ['speed', 'code', 'reasoning'],
+      headers: { 'Authorization': `Bearer ${env.CEREBRAS_API_KEY}`, 'Content-Type': 'application/json' },
+      cooldownUntil: 0
+    });
+
+    pool.push({
+      name: 'Cerebras - Qwen 27B Ultra-Speed',
+      url: 'https://api.cerebras.ai/v1/chat/completions',
+      model: 'qwen-3.8-27b',
+      tags: ['speed', 'code'],
       headers: { 'Authorization': `Bearer ${env.CEREBRAS_API_KEY}`, 'Content-Type': 'application/json' },
       cooldownUntil: 0
     });
@@ -227,13 +245,14 @@ function getProviders(env = process.env) {
     });
   }
 
-  // Local Offline Resilient Fallback
+  // Local Offline Resilient Fallback (Installed Qwen 2.5 Coder 7B)
   const ollamaHost = env.OLLAMA_HOST || 'http://localhost:11434';
+  const ollamaModel = env.OLLAMA_MODEL || 'qwen2.5-coder:7b';
   pool.push({
-    name: 'Ollama Local - Qwen3 4B (Offline Resilience)',
+    name: `Ollama Local - ${ollamaModel} (Offline Resilience)`,
     url: `${ollamaHost}/v1/chat/completions`,
-    model: 'qwen3:4b',
-    tags: ['offline', 'speed'],
+    model: ollamaModel,
+    tags: ['offline', 'speed', 'code'],
     headers: { 'Content-Type': 'application/json' },
     cooldownUntil: 0
   });
