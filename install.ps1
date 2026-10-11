@@ -94,7 +94,7 @@ if ($modo -eq "2") {
             $envLines += "$k=$($customEnv[$k])"
         }
         [System.IO.File]::WriteAllLines($envFile, $envLines)
-        Write-Host "`n [✓] Configuracion guardada exitosamente en .env" -ForegroundColor Green
+        Write-Host "`n [OK] Configuracion guardada exitosamente en .env" -ForegroundColor Green
     }
 }
 
@@ -108,8 +108,8 @@ Write-Host "`n [1/4] Configurando variables de entorno globales..." -ForegroundC
 [System.Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', 'infinite', [System.EnvironmentVariableTarget]::User)
 $env:ANTHROPIC_BASE_URL = 'http://127.0.0.1:20129'
 $env:ANTHROPIC_AUTH_TOKEN = 'infinite'
-Write-Host "       [✓] ANTHROPIC_BASE_URL  -> http://127.0.0.1:20129" -ForegroundColor Green
-Write-Host "       [✓] ANTHROPIC_AUTH_TOKEN -> infinite" -ForegroundColor Green
+Write-Host "       [OK] ANTHROPIC_BASE_URL  -> http://127.0.0.1:20129" -ForegroundColor Green
+Write-Host "       [OK] ANTHROPIC_AUTH_TOKEN -> infinite" -ForegroundColor Green
 
 # 2. Configurar Auto-Arranque Silencioso en Windows (Startup)
 Write-Host "`n [2/4] Configurando inicio automatico e invisible en segundo plano..." -ForegroundColor Yellow
@@ -117,10 +117,10 @@ $startupFolder = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft\Windows\Star
 $vbsPath = [System.IO.Path]::Combine($scriptDir, 'launch_hidden.vbs')
 $routerScript = [System.IO.Path]::Combine($scriptDir, 'src\router.js')
 
-$vbsContent = "Set WshShell = CreateObject(""WScript.Shell"")`nWshShell.Run ""cmd.exe /c node `""$routerScript`"""", 0, False`n"
+$vbsContent = "Set WshShell = CreateObject(`"WScript.Shell`")`r`nWshShell.Run `"cmd.exe /c node `"`"$routerScript`"`"`", 0, False`r`n"
 [System.IO.File]::WriteAllText($vbsPath, $vbsContent)
 Copy-Item $vbsPath (Join-Path $startupFolder 'infinite_claude_router.vbs') -Force
-Write-Host "       [✓] Acceso de inicio creado en carpeta Startup de Windows" -ForegroundColor Green
+Write-Host "       [OK] Acceso de inicio creado en carpeta Startup de Windows" -ForegroundColor Green
 
 # 3. Matar instancias previas si las hay y arrancar el router
 Write-Host "`n [3/4] Iniciando demonio del router en segundo plano..." -ForegroundColor Yellow
@@ -134,14 +134,14 @@ try {
 Start-Process wscript.exe -ArgumentList "`"$vbsPath`""
 Start-Sleep -Seconds 3
 
-# 4. Prueba de Estado y Diagnóstico en Vivo
+# 4. Prueba de Estado y Diagnostico en Vivo
 Write-Host "`n [4/4] Verificando conexion con el pool de modelos..." -ForegroundColor Yellow
 try {
     $res = Invoke-RestMethod -Uri "http://127.0.0.1:20129" -TimeoutSec 5 -ErrorAction Stop
-    Write-Host "       [✓] Estado: $($res.status.ToUpper())" -ForegroundColor Green
-    Write-Host "       [✓] Streaming SSE: $($res.streaming)" -ForegroundColor Green
-    Write-Host "       [✓] Proveedores Activos: $($res.providers_count)" -ForegroundColor Green
-    Write-Host "       [✓] Pool listo: $($res.pool[0])" -ForegroundColor Gray
+    Write-Host "       [OK] Estado: $($res.status.ToUpper())" -ForegroundColor Green
+    Write-Host "       [OK] Streaming SSE: $($res.streaming)" -ForegroundColor Green
+    Write-Host "       [OK] Proveedores Activos: $($res.providers_count)" -ForegroundColor Green
+    Write-Host "       [OK] Pool listo: $($res.pool[0])" -ForegroundColor Gray
 } catch {
     Write-Host "       [!] El servicio se inicio pero el socket aun esta levantando." -ForegroundColor Yellow
 }
