@@ -374,7 +374,7 @@ class InfiniteRouter {
               const choice = (parsed.choices || [])[0] || {};
               const delta = choice.delta || {};
 
-              const textToSend = delta.content;
+              const textToSend = delta.content || delta.reasoning_content || delta.reasoning;
 
               if (textToSend) {
                 if (textBlockIndex === null) {
