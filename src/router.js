@@ -100,32 +100,31 @@ function classifyTask(reqData) {
   const tools = reqData.tools || [];
   const toolNames = tools.map(t => (t.name || '').toLowerCase());
 
-  // LEVEL 3: Deep Reasoning / Architecture / Complex Debugging (Opus 5.5 / Astra 6 Engine)
-  const reasoningKeywords = [
-    'why', 'architect', 'plan', 'design', 'analyze', 'explain', 'optimize',
-    'debug', 'trace', 'concurrency', 'distributed', 'refactor whole', 'security',
-    'escalabilidad', 'rendimiento', 'diseña', 'analiza', 'por que', 'compara'
+  // PRIORITY: Code Execution & Action Tasks (Tool-use, files, subagents)
+  const codeActionKeywords = [
+    'crea', 'genera', 'escribe', 'haz', 'construye', 'write', 'create', 'build',
+    'implement', 'fix', 'run', 'make', 'agentes', 'subagentes', 'portfolio',
+    'portafolio', 'archivo', 'carpeta', 'code', 'function', 'app', 'web', 'script'
   ];
   if (
-    reasoningKeywords.some(kw => content.includes(kw)) ||
-    content.length > 500 ||
-    messages.length > 10
-  ) {
-    return 'reasoning';
-  }
-
-  // LEVEL 2: Code Implementation / File Modification (Code Specialist Engine)
-  const codeKeywords = [
-    'write code', 'implement', 'function', 'class', 'bug', 'fix', 'test',
-    'component', 'interface', 'endpoint', 'script', 'escribe', 'crea', 'corrige'
-  ];
-  if (
-    codeKeywords.some(kw => content.includes(kw)) ||
+    codeActionKeywords.some(kw => content.includes(kw)) ||
+    toolNames.includes('write') ||
+    toolNames.includes('edit') ||
+    toolNames.includes('bash') ||
+    toolNames.includes('agent') ||
     toolNames.includes('fileedittool') ||
-    toolNames.includes('write_to_file') ||
-    toolNames.includes('notebookeditcell')
+    toolNames.includes('write_to_file')
   ) {
     return 'code';
+  }
+
+  // LEVEL 3: Pure Analytical / Theoretical Reasoning (Opus 5.5 / Astra 6 Engine)
+  const reasoningKeywords = [
+    'why', 'explain concept', 'analyze theory', 'por que', 'compara algoritmos',
+    'filosofia', 'analisis abstracto', 'arquitectura pura'
+  ];
+  if (reasoningKeywords.some(kw => content.includes(kw))) {
+    return 'reasoning';
   }
 
   // LEVEL 1: Quick Terminal / Inspection / Short queries (Lightning Engine)
@@ -219,7 +218,7 @@ class InfiniteRouter {
       'Operating Mode: Senior Architect & Code Virtuoso (Opus 5.5 / Astra 6 Tier).',
       '1. ZERO INCOMPLETE CODE: Output 100% complete, production-ready implementations. NEVER use "// TODO", "// implement logic", or placeholders.',
       '2. CHAIN-OF-VERIFICATION: Verify imports, types, syntax, async safety, and edge cases before emitting code or tool parameters.',
-      '3. TOOL EXECUTION PRECISION: Provide exact file paths, valid JSON arguments, and non-destructive modifications.',
+      '3. TOOL EXECUTION DIRECTIVE: You have native tools provided. When the user requests creating files, writing code, executing commands, or launching subagents, YOU MUST INVOKE THE TOOLS IMMEDIATELY. DO NOT ask for user permission or explain what you intend to do; invoke the tool call directly.',
       '4. MAXIMUM TECHNICAL DENSITY: Be authoritative, concise, and eliminate conversational filler.'
     ].join('\n');
 
@@ -282,7 +281,10 @@ class InfiniteRouter {
       top_p: precision.top_p,
       stream: streamMode
     };
-    if (tools.length > 0) payload.tools = tools;
+    if (tools.length > 0) {
+      payload.tools = tools;
+      payload.tool_choice = 'auto';
+    }
 
     return payload;
   }
@@ -311,6 +313,7 @@ class InfiniteRouter {
       let buffer = '';
       let totalOutputTokens = 0;
       let hasSentText = false;
+      let hasStoppedText = false;
       let activeToolIndex = -1;
       let toolArgsBuffer = '';
 
@@ -363,9 +366,7 @@ class InfiniteRouter {
               const choice = (parsed.choices || [])[0] || {};
               const delta = choice.delta || {};
 
-              const textDelta = delta.content;
-              const reasoningDelta = delta.reasoning || delta.reasoning_content;
-              const textToSend = textDelta || (hasSentText ? null : reasoningDelta);
+              const textToSend = delta.content;
 
               if (textToSend) {
                 if (!hasSentText) {
@@ -386,6 +387,13 @@ class InfiniteRouter {
 
               // Self-Healing Tool Handling
               if (delta.tool_calls && delta.tool_calls.length > 0) {
+                if (hasSentText && !hasStoppedText) {
+                  this.sseEvent(clientRes, 'content_block_stop', {
+                    type: 'content_block_stop',
+                    index: 0
+                  });
+                  hasStoppedText = true;
+                }
                 for (const tc of delta.tool_calls) {
                   if (tc.function && tc.function.name) {
                     activeToolIndex = tc.index !== undefined ? tc.index + 1 : 1;
@@ -424,11 +432,12 @@ class InfiniteRouter {
             return;
           }
 
-          if (hasSentText) {
+          if (hasSentText && !hasStoppedText) {
             this.sseEvent(clientRes, 'content_block_stop', {
               type: 'content_block_stop',
               index: 0
             });
+            hasStoppedText = true;
           }
 
           if (activeToolIndex >= 0) {
