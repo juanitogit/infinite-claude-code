@@ -40,22 +40,19 @@ function checkStatus() {
 }
 
 function startDaemon() {
-  const isWin = process.platform === 'win32';
   const routerPath = path.join(__dirname, '..', 'src', 'router.js');
+  const projectDir = path.join(__dirname, '..');
+  const logFile = path.join(__dirname, '..', 'router.log');
+  const out = fs.openSync(logFile, 'a');
 
   console.log('🚀 Starting Infinite Claude Code in the background...');
-  if (isWin) {
-    const vbs = path.join(__dirname, '..', 'launch_hidden.vbs');
-    fs.writeFileSync(vbs, `Set WshShell = CreateObject("WScript.Shell")\nWshShell.Run "cmd.exe /c node ""${routerPath}""", 0, False\n`);
-    execSync(`wscript.exe "${vbs}"`);
-  } else {
-    const out = fs.openSync(path.join(__dirname, '..', 'router.log'), 'a');
-    const child = spawn(process.execPath, [routerPath], {
-      detached: true,
-      stdio: ['ignore', out, out]
-    });
-    child.unref();
-  }
+  const child = spawn(process.execPath, [routerPath], {
+    cwd: projectDir,
+    detached: true,
+    stdio: ['ignore', out, out],
+    windowsHide: true
+  });
+  child.unref();
 
   setTimeout(checkStatus, 1500);
 }

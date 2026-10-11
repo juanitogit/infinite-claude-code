@@ -117,7 +117,7 @@ $startupFolder = [System.IO.Path]::Combine($env:APPDATA, 'Microsoft\Windows\Star
 $vbsPath = [System.IO.Path]::Combine($scriptDir, 'launch_hidden.vbs')
 $routerScript = [System.IO.Path]::Combine($scriptDir, 'src\router.js')
 
-$vbsContent = "Set WshShell = CreateObject(`"WScript.Shell`")`r`nWshShell.Run `"cmd.exe /c node `"`"$routerScript`"`"`", 0, False`r`n"
+$vbsContent = "Set WshShell = CreateObject(`"WScript.Shell`")`r`nWshShell.CurrentDirectory = `"`"$scriptDir`"`"`r`nWshShell.Run `"node `"`"$routerScript`"`"`", 0, False`r`n"
 [System.IO.File]::WriteAllText($vbsPath, $vbsContent)
 Copy-Item $vbsPath (Join-Path $startupFolder 'infinite_claude_router.vbs') -Force
 Write-Host "       [OK] Acceso de inicio creado en carpeta Startup de Windows" -ForegroundColor Green
@@ -131,8 +131,8 @@ try {
     }
 } catch {}
 
-Start-Process wscript.exe -ArgumentList "`"$vbsPath`""
-Start-Sleep -Seconds 3
+$cliScript = Join-Path $scriptDir "bin\infinite-claude.js"
+node $cliScript start
 
 # 4. Prueba de Estado y Diagnostico en Vivo
 Write-Host "`n [4/4] Verificando conexion con el pool de modelos..." -ForegroundColor Yellow
