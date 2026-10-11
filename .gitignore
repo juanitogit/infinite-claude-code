@@ -3,3 +3,4 @@ router.log
 .env
 launch_hidden.vbs
 *.tmp
+*.zip
