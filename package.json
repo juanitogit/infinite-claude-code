@@ -1,0 +1,33 @@
+{
+  "name": "infinite-claude-code",
+  "version": "1.0.0",
+  "description": "Infinite, 100% Free, Zero-latency Multi-provider Router for Claude Code CLI and Desktop with real-time SSE streaming, automatic failover, and offline Ollama support.",
+  "main": "src/router.js",
+  "bin": {
+    "infinite-claude": "bin/infinite-claude.js"
+  },
+  "scripts": {
+    "start": "node bin/infinite-claude.js start",
+    "stop": "node bin/infinite-claude.js stop",
+    "status": "node bin/infinite-claude.js status",
+    "setup": "node bin/infinite-claude.js setup"
+  },
+  "keywords": [
+    "claude-code",
+    "anthropic",
+    "openrouter",
+    "nvidia-nim",
+    "ollama",
+    "ai-router",
+    "llm-proxy",
+    "free-ai",
+    "coding-agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juanitogit/infinite-claude-code.git"
+  },
+  "homepage": "https://github.com/juanitogit/infinite-claude-code#readme",
+  "author": "JuaneX <https://github.com/juanitogit>",
+  "license": "MIT"
+}

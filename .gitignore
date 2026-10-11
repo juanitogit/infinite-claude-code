@@ -1,0 +1,5 @@
+node_modules/
+router.log
+.env
+launch_hidden.vbs
+*.tmp
