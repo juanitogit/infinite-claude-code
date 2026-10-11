@@ -312,13 +312,20 @@ class InfiniteRouter {
       let messageId = `msg_${Date.now()}`;
       let buffer = '';
       let totalOutputTokens = 0;
-      let hasSentText = false;
+      let nextBlockIndex = 0;
+      let textBlockIndex = null;
       let hasStoppedText = false;
-      let activeToolIndex = -1;
-      let toolArgsBuffer = '';
+      const toolBlocks = new Map();
+
+      const watchdogTimer = setTimeout(() => {
+        if (!firstTokenReceived) {
+          req.destroy(new Error('First token timeout (8s)'));
+        }
+      }, 8000);
 
       const req = mod.request(opts, (res) => {
         if (res.statusCode >= 400) {
+          clearTimeout(watchdogTimer);
           let errBody = '';
           res.on('data', c => errBody += c);
           res.on('end', () => reject({ statusCode: res.statusCode, body: errBody }));
@@ -328,6 +335,7 @@ class InfiniteRouter {
         res.on('data', (chunk) => {
           if (!firstTokenReceived) {
             firstTokenReceived = true;
+            clearTimeout(watchdogTimer);
             if (!clientRes.headersSent) {
               clientRes.writeHead(200, {
                 'Content-Type': 'text/event-stream',
@@ -369,51 +377,62 @@ class InfiniteRouter {
               const textToSend = delta.content;
 
               if (textToSend) {
-                if (!hasSentText) {
+                if (textBlockIndex === null) {
+                  textBlockIndex = nextBlockIndex++;
                   this.sseEvent(clientRes, 'content_block_start', {
                     type: 'content_block_start',
-                    index: 0,
+                    index: textBlockIndex,
                     content_block: { type: 'text', text: '' }
                   });
-                  hasSentText = true;
                 }
                 this.sseEvent(clientRes, 'content_block_delta', {
                   type: 'content_block_delta',
-                  index: 0,
+                  index: textBlockIndex,
                   delta: { type: 'text_delta', text: textToSend }
                 });
                 totalOutputTokens++;
               }
 
-              // Self-Healing Tool Handling
+              // Self-Healing Tool Handling with Exact Anthropic Block Indexing
               if (delta.tool_calls && delta.tool_calls.length > 0) {
-                if (hasSentText && !hasStoppedText) {
+                if (textBlockIndex !== null && !hasStoppedText) {
                   this.sseEvent(clientRes, 'content_block_stop', {
                     type: 'content_block_stop',
-                    index: 0
+                    index: textBlockIndex
                   });
                   hasStoppedText = true;
                 }
                 for (const tc of delta.tool_calls) {
-                  if (tc.function && tc.function.name) {
-                    activeToolIndex = tc.index !== undefined ? tc.index + 1 : 1;
+                  const key = tc.index !== undefined ? tc.index : 0;
+                  if (!toolBlocks.has(key)) {
+                    const bIdx = nextBlockIndex++;
+                    const tObj = {
+                      blockIndex: bIdx,
+                      id: tc.id || `call_${Date.now()}_${bIdx}`,
+                      name: (tc.function && tc.function.name) || 'tool',
+                      args: ''
+                    };
+                    toolBlocks.set(key, tObj);
                     this.sseEvent(clientRes, 'content_block_start', {
                       type: 'content_block_start',
-                      index: activeToolIndex,
+                      index: bIdx,
                       content_block: {
                         type: 'tool_use',
-                        id: tc.id || `call_${Date.now()}`,
-                        name: tc.function.name,
+                        id: tObj.id,
+                        name: tObj.name,
                         input: {}
                       }
                     });
-                    toolArgsBuffer = '';
+                  }
+                  const currentTool = toolBlocks.get(key);
+                  if (tc.function && tc.function.name && tc.function.name !== currentTool.name) {
+                    currentTool.name = tc.function.name;
                   }
                   if (tc.function && tc.function.arguments) {
-                    toolArgsBuffer += tc.function.arguments;
+                    currentTool.args += tc.function.arguments;
                     this.sseEvent(clientRes, 'content_block_delta', {
                       type: 'content_block_delta',
-                      index: activeToolIndex,
+                      index: currentTool.blockIndex,
                       delta: {
                         type: 'input_json_delta',
                         partial_json: tc.function.arguments
@@ -432,28 +451,29 @@ class InfiniteRouter {
             return;
           }
 
-          if (hasSentText && !hasStoppedText) {
+          if (textBlockIndex !== null && !hasStoppedText) {
             this.sseEvent(clientRes, 'content_block_stop', {
               type: 'content_block_stop',
-              index: 0
+              index: textBlockIndex
             });
             hasStoppedText = true;
           }
 
-          if (activeToolIndex >= 0) {
+          for (const tb of toolBlocks.values()) {
             this.sseEvent(clientRes, 'content_block_stop', {
               type: 'content_block_stop',
-              index: activeToolIndex
+              index: tb.blockIndex
             });
           }
 
-          const stopReason = activeToolIndex >= 0 ? 'tool_use' : 'end_turn';
+          const stopReason = toolBlocks.size > 0 ? 'tool_use' : 'end_turn';
           this.sseEvent(clientRes, 'message_delta', {
             type: 'message_delta',
             delta: { stop_reason: stopReason, stop_sequence: null },
             usage: { output_tokens: Math.max(totalOutputTokens, 1) }
           });
 
+          clearTimeout(watchdogTimer);
           this.sseEvent(clientRes, 'message_stop', { type: 'message_stop' });
           clientRes.end();
           resolve({ outputTokens: Math.max(totalOutputTokens, 1) });
@@ -461,11 +481,13 @@ class InfiniteRouter {
       });
 
       req.on('error', (err) => {
+        clearTimeout(watchdogTimer);
         if (!firstTokenReceived) reject(err);
         else { clientRes.end(); resolve({ outputTokens: totalOutputTokens }); }
       });
 
       req.on('timeout', () => {
+        clearTimeout(watchdogTimer);
         req.destroy();
         if (!firstTokenReceived) reject(new Error('First token timeout'));
         else { clientRes.end(); resolve({ outputTokens: totalOutputTokens }); }
@@ -488,13 +510,18 @@ class InfiniteRouter {
         path: u.pathname,
         method: 'POST',
         headers: { ...provider.headers, 'Content-Length': Buffer.byteLength(bodyStr) },
-        timeout: 15000
+        timeout: 8000
       };
+
+      let timer = setTimeout(() => {
+        req.destroy(new Error('Non-streaming request timeout (8s)'));
+      }, 8000);
 
       const req = mod.request(opts, (res) => {
         let b = '';
         res.on('data', c => b += c);
         res.on('end', () => {
+          clearTimeout(timer);
           if (res.statusCode >= 400) {
             reject({ statusCode: res.statusCode, body: b });
           } else {
@@ -503,8 +530,8 @@ class InfiniteRouter {
           }
         });
       });
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      req.on('error', (err) => { clearTimeout(timer); reject(err); });
+      req.on('timeout', () => { clearTimeout(timer); req.destroy(); reject(new Error('timeout')); });
       req.write(bodyStr);
       req.end();
     });
@@ -804,6 +831,14 @@ class InfiniteRouter {
                 const code = err.statusCode || 0;
                 this.log(`⚠️ ${provider.name} failed (${code || err.message}). Failing over to next...`);
                 provider.cooldownUntil = (Date.now() / 1000) + 90;
+                if (provider.name.startsWith('OpenRouter') && (code === 429 || (err.body && String(err.body).includes('free-models-per-day')))) {
+                  this.log('🚨 OpenRouter free-tier daily cap reached. Setting cooldown on OpenRouter models to prioritize active NIM/Groq pool.');
+                  for (const p of this.providers) {
+                    if (p.name.startsWith('OpenRouter')) {
+                      p.cooldownUntil = (Date.now() / 1000) + 3600;
+                    }
+                  }
+                }
               }
             }
 

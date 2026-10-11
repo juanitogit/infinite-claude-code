@@ -13,7 +13,22 @@ function getProviders(env = process.env) {
 
   const pool = [];
 
-  // --- FLAGSHIP REASONING TIER (OpenRouter / NVIDIA NIM) ---
+  // --- FLAGSHIP ACTIVE TIER (NVIDIA NIM - Sub-second & Native Tools) ---
+  if (nvidiaKey) {
+    pool.push({
+      name: 'NVIDIA NIM - LLaMA 3.2 11B Vision & Code',
+      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      model: 'meta/llama-3.2-11b-vision-instruct',
+      tags: ['code', 'speed', 'reasoning'],
+      headers: {
+        'Authorization': `Bearer ${nvidiaKey}`,
+        'Content-Type': 'application/json'
+      },
+      cooldownUntil: 0
+    });
+  }
+
+  // --- REASONING TIER (OpenRouter Fallback) ---
   if (openrouterKey) {
     pool.push({
       name: 'OpenRouter - Nemotron 120B Super (Free)',
@@ -31,10 +46,47 @@ function getProviders(env = process.env) {
   }
 
   if (nvidiaKey) {
+
     pool.push({
-      name: 'NVIDIA NIM - Kimi K3 Reasoning',
+      name: 'NVIDIA NIM - GLM 5.3 Agentic Reasoning',
       url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-      model: 'moonshotai/kimi-k3',
+      model: 'z-ai/glm-5.3',
+      tags: ['reasoning', 'code'],
+      headers: {
+        'Authorization': `Bearer ${nvidiaKey}`,
+        'Content-Type': 'application/json'
+      },
+      cooldownUntil: 0
+    });
+
+    pool.push({
+      name: 'NVIDIA NIM - Nemotron 120B Super Reasoning',
+      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      model: 'nvidia/nemotron-3-super-120b-a12b',
+      tags: ['reasoning'],
+      headers: {
+        'Authorization': `Bearer ${nvidiaKey}`,
+        'Content-Type': 'application/json'
+      },
+      cooldownUntil: 0
+    });
+
+    pool.push({
+      name: 'NVIDIA NIM - Nemotron 30B Nano Omni',
+      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
+      tags: ['speed', 'reasoning'],
+      headers: {
+        'Authorization': `Bearer ${nvidiaKey}`,
+        'Content-Type': 'application/json'
+      },
+      cooldownUntil: 0
+    });
+
+    pool.push({
+      name: 'NVIDIA NIM - Nemotron 550B Ultra Reasoning',
+      url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+      model: 'nvidia/nemotron-3-ultra-550b-a55b',
       tags: ['reasoning'],
       headers: {
         'Authorization': `Bearer ${nvidiaKey}`,
@@ -61,19 +113,21 @@ function getProviders(env = process.env) {
     });
   }
 
-  // 9Router & OmniRouter (High Availability Zero-Key Open Routers)
-  pool.push({
-    name: '9Router - Fast Free Dispatcher',
-    url: env.ROUTER9_BASE_URL || 'https://api.9router.com/v1/chat/completions',
-    model: env.ROUTER9_MODEL || 'qwen/qwen-2.5-coder-32b',
-    tags: ['code'],
-    headers: {
-      'Authorization': `Bearer ${env.ROUTER9_API_KEY || 'free'}`,
-      'Content-Type': 'application/json',
-      'X-Title': 'Infinite Claude Code'
-    },
-    cooldownUntil: 0
-  });
+  // 9Router & OmniRouter (Only active if custom endpoints are configured)
+  if (env.ROUTER9_BASE_URL) {
+    pool.push({
+      name: '9Router - Fast Free Dispatcher',
+      url: env.ROUTER9_BASE_URL,
+      model: env.ROUTER9_MODEL || 'qwen/qwen-2.5-coder-32b',
+      tags: ['code'],
+      headers: {
+        'Authorization': `Bearer ${env.ROUTER9_API_KEY || 'free'}`,
+        'Content-Type': 'application/json',
+        'X-Title': 'Infinite Claude Code'
+      },
+      cooldownUntil: 0
+    });
+  }
 
   if (openrouterKey) {
     pool.push({
@@ -108,18 +162,20 @@ function getProviders(env = process.env) {
     });
   }
 
-  pool.push({
-    name: 'OmniRouter - Free Auto Balance',
-    url: env.OMNIROUTER_BASE_URL || 'https://api.omnirouter.ai/v1/chat/completions',
-    model: env.OMNIROUTER_MODEL || 'deepseek/deepseek-chat',
-    tags: ['speed', 'code'],
-    headers: {
-      'Authorization': `Bearer ${env.OMNIROUTER_API_KEY || 'free'}`,
-      'Content-Type': 'application/json',
-      'X-Title': 'Infinite Claude Code'
-    },
-    cooldownUntil: 0
-  });
+  if (env.OMNIROUTER_BASE_URL) {
+    pool.push({
+      name: 'OmniRouter - Free Auto Balance',
+      url: env.OMNIROUTER_BASE_URL,
+      model: env.OMNIROUTER_MODEL || 'deepseek/deepseek-chat',
+      tags: ['speed', 'code'],
+      headers: {
+        'Authorization': `Bearer ${env.OMNIROUTER_API_KEY || 'free'}`,
+        'Content-Type': 'application/json',
+        'X-Title': 'Infinite Claude Code'
+      },
+      cooldownUntil: 0
+    });
+  }
 
   if (openrouterKey) {
     pool.push({
