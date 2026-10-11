@@ -319,9 +319,9 @@ class InfiniteRouter {
 
       const watchdogTimer = setTimeout(() => {
         if (!firstTokenReceived) {
-          req.destroy(new Error('First token timeout (8s)'));
+          req.destroy(new Error('First token timeout (15s)'));
         }
-      }, 8000);
+      }, 15000);
 
       const req = mod.request(opts, (res) => {
         if (res.statusCode >= 400) {
@@ -510,12 +510,12 @@ class InfiniteRouter {
         path: u.pathname,
         method: 'POST',
         headers: { ...provider.headers, 'Content-Length': Buffer.byteLength(bodyStr) },
-        timeout: 8000
+        timeout: 25000
       };
 
       let timer = setTimeout(() => {
-        req.destroy(new Error('Non-streaming request timeout (8s)'));
-      }, 8000);
+        req.destroy(new Error('Non-streaming request timeout (25s)'));
+      }, 25000);
 
       const req = mod.request(opts, (res) => {
         let b = '';

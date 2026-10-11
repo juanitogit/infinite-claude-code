@@ -63,7 +63,7 @@ function getProviders(env = process.env) {
       name: 'NVIDIA NIM - Nemotron 120B Super Reasoning',
       url: 'https://integrate.api.nvidia.com/v1/chat/completions',
       model: 'nvidia/nemotron-3-super-120b-a12b',
-      tags: ['reasoning'],
+      tags: ['reasoning', 'code'],
       headers: {
         'Authorization': `Bearer ${nvidiaKey}`,
         'Content-Type': 'application/json'
@@ -75,7 +75,7 @@ function getProviders(env = process.env) {
       name: 'NVIDIA NIM - Nemotron 30B Nano Omni',
       url: 'https://integrate.api.nvidia.com/v1/chat/completions',
       model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
-      tags: ['speed', 'reasoning'],
+      tags: ['speed', 'reasoning', 'code'],
       headers: {
         'Authorization': `Bearer ${nvidiaKey}`,
         'Content-Type': 'application/json'
@@ -87,7 +87,7 @@ function getProviders(env = process.env) {
       name: 'NVIDIA NIM - Nemotron 550B Ultra Reasoning',
       url: 'https://integrate.api.nvidia.com/v1/chat/completions',
       model: 'nvidia/nemotron-3-ultra-550b-a55b',
-      tags: ['reasoning'],
+      tags: ['reasoning', 'code'],
       headers: {
         'Authorization': `Bearer ${nvidiaKey}`,
         'Content-Type': 'application/json'
