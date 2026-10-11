@@ -52,7 +52,7 @@ It translates Anthropic Messages API calls (`/v1/messages`) into OpenAI-compatib
 Unlike conventional proxies that rely on heavy Python environments and naive sequential fallbacks, **Infinite Claude Code** introduces 5 game-changing capabilities:
 
 ### 1. 🐝 Swarm Concurrency Dispatcher
-When Claude Code launches multiple subagents in parallel (`claude --agent-count 5`), typical routers bottleneck and trigger `429 Rate Limits` on a single model. Our dispatcher **distributes concurrent subagent calls in parallel across distinct providers** (e.g. Subagent 1 ➡️ Nemotron 120B, Subagent 2 ➡️ North Mini Code, Subagent 3 ➡️ Gemma 4). Multiply team productivity by 4x with zero throttle.
+When Claude Code launches multiple subagents in parallel (o abres múltiples sesiones en background con `claude --bg`), typical routers bottleneck and trigger `429 Rate Limits` on a single model. Our dispatcher **distributes concurrent subagent calls in parallel across distinct providers** (e.g. Subagent 1 ➡️ Nemotron 120B, Subagent 2 ➡️ North Mini Code, Subagent 3 ➡️ Gemma 4). Multiply team productivity by 4x with zero throttle.
 
 ### 2. 🧠 Semantic Task Routing
 Rather than blindly querying the first model on a list, our proxy-level classifier inspects the prompt and tools to route work to the ideal engine:
@@ -237,10 +237,14 @@ You can add your own keys or customize models in `src/providers.js` or via envir
 
 ## 🧩 Advanced: Unlimited Autonomous Subagents
 
-Because Infinite Claude Code operates without API cost caps, you can safely unleash Claude Code's multi-agent features:
+Because Infinite Claude Code operates without API cost caps, you can safely unleash Claude Code's multi-agent capabilities and background sessions:
 
 ```bash
-claude --agent-count 5 "Refactor the authentication module and write unit tests"
+# Ejecutar directamente pidiendo subagentes autónomos
+claude "Divide la tarea y usa subagentes concurrentes en paralelo para crear la plataforma completa"
+
+# O despachar múltiples agentes autónomos en segundo plano
+claude --bg "Refactor the authentication module and write unit tests"
 ```
 
 All subagents will run concurrently, load-balanced across the provider pool without hitting rate limits or draining billing accounts!
